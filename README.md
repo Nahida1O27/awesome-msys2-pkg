@@ -1,0 +1,1 @@
+# awesome-msys2-PKGBUILD
