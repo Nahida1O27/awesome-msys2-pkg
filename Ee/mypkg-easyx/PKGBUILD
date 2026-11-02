@@ -1,0 +1,33 @@
+
+_realname=easyx
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver='26.10.25'
+pkgrel=1
+pkgdesc='教学用C++免费绘图库'
+arch=('any')
+mingw_arch=('ucrt64' 'clang64')
+url="https://easyx.cn"
+msys2_documentation_url='https://docs.easyx.cn'
+license=('spdx: MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-cc")
+makedepends=("${MINGW_PACKAGE_PREFIX}-7zip")
+source=("https://easyx.cn/download/EasyX_${pkgver}.exe")
+sha256sums=('782923f4ab3abcda4ad6e54563d3c9de8a83955db04481520e6ad3a48eddc3b7')
+noextract=("EasyX_${pkgver}.exe")
+
+prepare() {
+  cd "${srcdir}"
+  mv EasyX_${pkgver}.exe EasyX_${pkgver}.7z
+  7z x EasyX_${pkgver}.7z -o"${srcdir}"
+}
+
+package() {
+  cd "${srcdir}"
+
+  install -Dm644 include/*.h -t "${pkgdir}${MINGW_PREFIX}/include"
+
+  install -Dm644 lib_mingw_ucrt/x64/*.a -t "${pkgdir}${MINGW_PREFIX}/lib"
+
+  install -Dm644 readme.txt -t "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+}
