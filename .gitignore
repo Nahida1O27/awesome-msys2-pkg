@@ -1,0 +1,5 @@
+mingw-w64-*
+*.tar.*
+build*
+src/
+pkg/
