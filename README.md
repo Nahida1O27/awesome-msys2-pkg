@@ -8,5 +8,5 @@ You could open a issue to share your PKGBUILD scripts, I'll put your repo URL be
 PR is too tedious, so I don't accept.
 
 ## Community Power
-https://github.com/msys2/MINGW-packages
-https://github.com/Nahida1O27/awesome-msys2-pkg
+https://github.com/msys2/MINGW-packages  
+https://github.com/Nahida1O27/awesome-msys2-pkg  
