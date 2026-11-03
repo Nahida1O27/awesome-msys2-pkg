@@ -1,0 +1,115 @@
+_realname=gmssl
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=3.2.0
+pkgrel=1
+pkgdesc="中国国家密码工具箱"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='http://gmssl.org/'
+# https://repology.org/project/gmssl/versions
+msys2_references=(
+  'aur: gmssl'
+)
+msys2_documentation_url='http://gmssl.org/docs/docindex.html'
+msys2_repository_url='https://github.com/guanzhi/GmSSL'
+msys2_issue_tracker_url='https://github.com/guanzhi/GmSSL/issues'
+license=('Apache-2.0')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-cc-libs"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-cmake"
+  "${MINGW_PACKAGE_PREFIX}-ninja"
+#opencl(CL/cl.h)
+)
+
+source=("${msys2_repository_url}/archive/v${pkgver}/v${pkgver}.tar.gz")
+sha256sums=('b0bb50f935c1b35c614ff0a7f235b00520b86a3e9a659a681d77be6dadcb5d6b')
+b2sums=('03f8d1beadb054bbd006f9bfccff37d9a07eba18a0c4083558c137d6389f806d9f5485da1b8bb580923777d100f214483500c7f94c1c00dcd060bb9b9d1afa36')
+
+#prepare() {
+#  sed -i 's/target_link_libraries(gmssl "-framework OpenCL")/target_link_libraries(gmssl PRIVATE OpenCL)/' "GmSSL-${pkgver}/CMakeLists.txt"
+#}
+
+
+build() {
+  declare -a _cmake_opts=(
+    -GNinja
+    -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}"
+    -DCMAKE_PREFIX_PATH="${MINGW_PREFIX}"
+    -DCMAKE_MODULE_PATH="${MINGW_PREFIX}"/lib/cmake
+
+    -DENABLE_HTTP_TESTS=ON
+    -DENABLE_LMS_CROSSCHECK=ON
+    #-DENABLE_SM2_ALGOR_ID_ENCODE_NUL=ON
+    #-DENABLE_SM3_SSE=ON
+    -DEANBLE_SM4_AESNI=ON
+    -DEANBLE_SM4_AVX2=ON
+    #-DENABLE_SM4_CL=ON
+    #-DENABLE_SM4_CTR_AESNI_AVX=ON
+
+    -S "GmSSL-${pkgver}"
+  )
+
+# aarch64
+  if [[ "${MSYSTEM}" == "CLANGARM64" ]]; then
+    _cmake_opts+=(
+      -DENABLE_GMUL_ARM64=ON
+      -DENABLE_SM2_ARM64=ON
+      -DENABLE_SM3_ARM64=ON
+      -DENABLE_SM4_ARM64=ON
+      -DENABLE_SM4_CE=ON
+      -DENABLE_SM9_ARM64=ON
+    )
+  else
+# x86_64
+    _cmake_opts+=(
+      #-DENABLE_SM2_AMD64=ON
+    )
+  fi
+
+  if check_option "debug" "n"; then
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  msg2 "Building static library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -DBUILD_SHARED_LIBS=OFF \
+      -B "build-${MSYSTEM}-static"
+
+  cmake --build "build-${MSYSTEM}-static"
+
+  msg2 "Building shared library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -DBUILD_SHARED_LIBS=ON \
+      -B "build-${MSYSTEM}-shared"
+
+  cmake --build "build-${MSYSTEM}-shared"
+}
+
+check() {
+  cd "${srcdir}/build-${MSYSTEM}-static"
+  ctest .
+
+  cd "${srcdir}/build-${MSYSTEM}-shared"
+  ctest .
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}-static
+
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}-shared
+
+  install -Dm644 "${srcdir}/GmSSL-${pkgver}/LICENSE" \
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+  install -Dm644 "${srcdir}/GmSSL-${pkgver}/README.md" \
+    "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/README.md"
+}
