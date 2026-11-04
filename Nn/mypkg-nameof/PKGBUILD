@@ -1,0 +1,71 @@
+_realname=nameof
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=0.11.0
+pkgrel=1
+pkgdesc="Nameof operator for modern C++, simply obtain the name of a variable, type, function, macro, and enum"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='http://github.com/Neargye/nameof'
+# https://repology.org/project/nameof/versions
+msys2_references=(
+  'aur: nameof'
+)
+msys2_documentation_url='https://github.com/Neargye/nameof/blob/master/doc/reference.md'
+msys2_repository_url='https://github.com/Neargye/nameof'
+msys2_issue_tracker_url='https://github.com/Neargye/nameof/issues'
+license=('MIT')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-cc-libs"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-cmake"
+  "${MINGW_PACKAGE_PREFIX}-ninja"
+)
+
+source=("${msys2_repository_url}/archive/v${pkgver}/v${pkgver}.tar.gz")
+sha256sums=('df6b6c30dfd7dd41995af4fc30d341b318d048465aceebbf861fc441fa6b051d')
+b2sums=('b65dababf3c20e2105f82d3557ca72ad976be4c86f5f5981562b0f82d0b8d3adfcc7904ce52c773975404b2daba42cf28320070353a65507bfc78d9a488bfb02')
+
+
+build() {
+  declare -a _cmake_opts=(
+    -GNinja
+    -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}"
+    -DCMAKE_PREFIX_PATH="${MINGW_PREFIX}"
+    -DCMAKE_MODULE_PATH="${MINGW_PREFIX}"/lib/cmake
+
+    -S "${_realname}-${pkgver}"
+  )
+
+  if check_option "debug" "n"; then
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -B "build-${MSYSTEM}"
+
+  cmake --build "build-${MSYSTEM}"
+}
+
+check() {
+  cd "${srcdir}/build-${MSYSTEM}"
+  ctest .
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}
+  mkdir -p "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}"
+  mv ${pkgdir}${MINGW_PREFIX}/share/${_realname} \
+    ${pkgdir}${MINGW_PREFIX}/share/licenses
+  mkdir -p "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/README.md" \
+    -t "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+  install -Dm644 ${srcdir}/${_realname}-${pkgver}/doc/* \
+    -t "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+}
