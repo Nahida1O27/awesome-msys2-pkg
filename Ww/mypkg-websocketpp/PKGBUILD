@@ -1,0 +1,95 @@
+_realname=websocketpp
+pkgbase=mypkg-${_realname}
+pkgname=(
+  "${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}"
+  "${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}-docs"
+)
+pkgver=0.8.2
+pkgrel=1
+pkgdesc="C++ websocket client/server library"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://www.zaphoyd.com/projects/websocketpp/'
+# https://repology.org/project/websocketpp/versions
+msys2_references=(
+  'archlinux: websocketpp'
+)
+msys2_documentation_url='https://docs.websocketpp.org/'
+msys2_changelog_url='https://docs.websocketpp.org/md_changelog.html'
+msys2_repository_url='https://github.com/zaphoyd/websocketpp'
+msys2_issue_tracker_url='https://github.com/zaphoyd/websocketpp/issues'
+license=('BSD')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-cc-libs"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-cmake"
+  "${MINGW_PACKAGE_PREFIX}-ninja"
+)
+source=("${msys2_repository_url}/archive/${pkgver}/${pkgver}.tar.gz")
+sha256sums=('6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755')
+b2sums=('dacee33832f493d465afe208f9edea1393414a22c8db8f8c86b8f913521d0d8d68b95673a2e82b7479acfbab1ac541eda2d713a55d5de387b3879461d5884df7')
+
+build() {
+  declare -a _cmake_opts=(
+    -GNinja
+    -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}"
+    -DCMAKE_PREFIX_PATH="${MINGW_PREFIX}"
+    -DCMAKE_MODULE_PATH="${MINGW_PREFIX}"/lib/cmake
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+    -S "${_realname}-${pkgver}"
+  )
+
+  if check_option "debug" "n"; then
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -B "build-${MSYSTEM}"
+
+  cmake --build "build-${MSYSTEM}"
+
+  cd "${srcdir}/${_realname}-${pkgver}"
+  doxygen doxyfile
+}
+
+check() {
+  cd "${srcdir}/build-${MSYSTEM}"
+  ctest .
+}
+
+package_websocketpp() {
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}
+  mkdir -p "${pkgdir}${MINGW_PREFIX}/lib/cmake/${_realname}"
+  mv ${pkgdir}${MINGW_PREFIX}/cmake/* "${pkgdir}${MINGW_PREFIX}/lib/cmake/${_realname}"
+  rm -rf "${pkgdir}${MINGW_PREFIX}/cmake"
+
+  install -Dm644 "${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
+}
+
+package_websocketpp-docs() {
+  pkgdesc+=" (documentation)"
+  depends+=("${MINGW_PACKAGE_PREFIX}-doxygen")
+  optdepends=()
+
+  install -d "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+  cp -r ${srcdir}/${_realname}-${pkgver}/doxygen/html/* "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}"
+  install -Dm644 "${_realname}-${pkgver}/readme.md" "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/readme.md"
+}
+
+# template start; name=mingw-w64-splitpkg-wrappers; version=1.0;
+# vim: set ft=bash :
+
+# generate wrappers
+for _name in "${pkgname[@]}"; do
+  _short="package_${_name#${MINGW_PACKAGE_PREFIX}-mypkg-}"
+  _func="$(declare -f "${_short}")"
+  eval "${_func/#${_short}/package_${_name}}"
+done
+# template end;
