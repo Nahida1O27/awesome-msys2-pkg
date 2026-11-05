@@ -41,4 +41,7 @@ pkg/
 /*/*/tortoisegit.data
 /*/base/
 /*/tmp*/
+
 .DS_Store
+.vscode
+.idea
