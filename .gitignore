@@ -1,5 +1,6 @@
 mingw-w64-*
 build*
+*.exe
 *.tar.*
 *.tar.xz
 *.tar.gz
@@ -10,6 +11,7 @@ build*
 *.tar
 *.tgz
 *.zip
+*.7z
 *.rar
 *.sha256sum
 *.minisig
@@ -19,6 +21,8 @@ build*
 *.log.[0-9]*
 src/
 pkg/
+a/
+b/
 *~
 *.swp
 *.swo
