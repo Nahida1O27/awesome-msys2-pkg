@@ -1,0 +1,30 @@
+diff -Naur a/src/co/sched.cc b/src/co/sched.cc
+--- a/src/co/sched.cc	2026-09-28 19:33:43.000000000 +0800
++++ b/src/co/sched.cc	2026-11-16 12:53:06.558637900 +0800
+@@ -41,7 +41,7 @@
+ void Sched::main_func(tb_context_from_t from) {
+     CLOG("co main_func beg, from main ctx: ", from.ctx);
+     ((Coroutine*)from.priv)->ctx = from.ctx; // update the main ctx
+-#ifdef _WIN32
++#ifdef _MSC_VER
+     __try {
+         ((Coroutine*)from.priv)->sched->running()->c();
+     } __except(_co_on_exception(GetExceptionInformation())) {
+diff -Naur a/src/co/sched.h b/src/co/sched.h
+--- a/src/co/sched.h	2026-09-28 19:33:43.000000000 +0800
++++ b/src/co/sched.h	2026-11-16 14:01:32.025430900 +0800
+@@ -157,8 +157,14 @@
+     Sched(uint32 id);
+     ~Sched();
+ 
++    #ifdef S
++    #undef S
+     #define S 's',_id
++    #endif
++    #ifdef SC
++    #undef SC
+     #define SC 's',_id,'c',_running->id,'(',_running,')'
++    #endif
+ 
+     uint32 id() const { return _id; }
+ 

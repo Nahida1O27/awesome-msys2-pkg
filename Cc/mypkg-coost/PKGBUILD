@@ -1,0 +1,89 @@
+_realname=coost
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=4.0.1
+pkgrel=1
+pkgdesc="A lightweight C++ base library with Go-style coroutines."
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://github.com/idealvin/coost'
+# https://repology.org/project/coost/versions
+msys2_references=(
+  'xrepo: coost'
+)
+msys2_documentation_url='https://coostdocs.github.io/cn/'
+msys2_repository_url='https://github.com/idealvin/coost'
+msys2_issue_tracker_url='https://github.com/idealvin/coost/issues'
+license=('MIT')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-cc-libs"
+  "${MINGW_PACKAGE_PREFIX}-libbacktrace"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-cmake"
+  "${MINGW_PACKAGE_PREFIX}-ninja"
+)
+
+source=(${_realname}-${pkgver}.tar.gz::"${msys2_repository_url}/archive/v${pkgver}/v${pkgver}.tar.gz"
+        "001-fix-mingw-build.patch")
+sha256sums=('4b8fad3283f5c5c12f6ca54da2da772c8e128cb471a56ac42729a6cbdddd0093'
+            'd11a28ea03a86009efd98b879942d7541677283b35bf4f130a197d277de8f3df')
+b2sums=('cda8a245edff6fe59f3376d708b111c7991c4763595a6b4b2cd7c09996ce3ebcc2a7a6d28d8de1346b6061a20ebe3a94cb01c5c7663c917c687cea08d9660008'
+        '1bb29da4f7356e41dd44e4a9b71482ea1b1a6a70e375d6db204324619ae11fd0d76712537ff290192d1648412381be27decf32164d349f91b3ecad00844ae38e')
+
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+prepare() {
+  cd ${srcdir}/${_realname}-${pkgver}
+  apply_patch_with_msg "001-fix-mingw-build.patch"
+}
+
+_cmake_opts=(
+  -GNinja
+  -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}"
+
+  -DBUILD_ALL=ON
+  -DFPIC=ON
+  -DWITH_BACKTRACE=ON
+
+  -S "${_realname}-${pkgver}"
+)
+
+build() {
+  if check_option "debug" "n"; then
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  msg2 "Building static library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -B "build-${MSYSTEM}"
+
+  cmake --build "build-${MSYSTEM}"
+}
+
+check() {
+  ${srcdir}/build-${MSYSTEM}/bin/unitest
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/LICENSE.md" \
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE.md"
+  install -Dm644 \
+    -t ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/ \
+    ${srcdir}/${_realname}-${pkgver}/readme.md \
+    ${srcdir}/${_realname}-${pkgver}/readme_cn.md
+  rm ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/LICENSE.md
+}
