@@ -1,0 +1,27 @@
+_realname=clice
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A C/C++, Objective-C and CUDA language server built on Clang"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://docs.clice.io/'
+msys2_documentation_url='https://docs.clice.io/clice/guide/what-is-clice'
+msys2_repository_url='https://github.com/clice-io/clice'
+msys2_issue_tracker_url='https://github.com/clice-io/clice/issues'
+license=('Apache-2.0')
+# https://repology.org/project/clice/versions
+msys2_references=(
+  'aur: clice-bin'
+)
+depends=()
+source=("${msys2_repository_url}/releases/download/v${pkgver}/clice-${pkgver}.${MINGW_CHOST}.zip")
+sha256sums=("4c236c9aa107f52ecfe958a141690364bb225feb23c9b9d967cfa1911b47dedb")
+
+package() {
+  cd ${srcdir}/clice
+  install -Dm755 bin/clice ${pkgdir}${MINGW_PREFIX}/bin/clice
+  install -Dm644 LICENSE ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE
+  install -Dm644 clice.toml ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/clice.toml
+}
