@@ -1,0 +1,53 @@
+_realname=mpress
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=1.0.31
+pkgrel=1
+pkgdesc="A small, fast, Markdown-first documentation static site generator written in Go"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://m-press.me/'
+msys2_documentation_url='https://m-press.me/tutorials/first-site/'
+msys2_repository_url='https://github.com/leaanthony/mpress'
+msys2_issue_tracker_url='https://github.com/leaanthony/mpress/issues'
+msys2_changelog_url="https://github.com/leaanthony/mpress/blob/main/CHANGELOG.md"
+license=('MIT')
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-go"
+)
+source=(${_realname}-${pkgver}.tar.gz::"${msys2_repository_url}/archive/v${pkgver}/v${pkgver}.tar.gz")
+sha256sums=('4b7d1f1e1d421a2f726500d70553ed84c0e23ef2ff45fe89b73438099c9eb9fe')
+b2sums=('e2940374fa6dd7dd989a5a11b278872d2d8ba6d59a3391ff6ad8a4fae68f3c59b230024e3393fdde5ee81a68db35beec6fc3dbaa14995bd4141472311ae45b6c')
+
+
+build() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+  
+  export GOOS=windows
+  export GOROOT=${MINGW_PREFIX}/lib/go
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS="-trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
+  case "${CARCH}" in
+  x86_64)
+    GOFLAGS+=" -buildmode=pie"
+    ;;
+  esac
+
+  go build -o "../build/${_realname}.exe" ./cmd/mpress
+}
+
+package() {
+  install -vDm755 "${srcdir}/build/${_realname}.exe" -t "${pkgdir}${MINGW_PREFIX}/bin/"
+  install -vDm644 "${srcdir}/${_realname}-${pkgver}/LICENSE" \
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+  install -vDm644 \
+    -t ${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/ \
+    ${srcdir}/${_realname}-${pkgver}/README.md \
+    ${srcdir}/${_realname}-${pkgver}/SECURITY.md \
+    ${srcdir}/${_realname}-${pkgver}/THIRD_PARTY_NOTICES.md \
+    ${srcdir}/${_realname}-${pkgver}/TRANSLATION_AUDIT.md
+}
