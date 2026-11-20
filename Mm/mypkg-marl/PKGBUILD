@@ -1,0 +1,108 @@
+_realname=marl
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}")
+pkgver=20260427
+pkgrel=1
+pkgdesc="A hybrid thread / fiber task scheduler written in C++ 11"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://github.com/google/marl'
+# https://repology.org/project/marl/versions
+msys2_repository_url='https://github.com/google/marl'
+msys2_issue_tracker_url='https://github.com/google/marl/issues'
+license=('Apache-2.0')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-cc-libs"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-cmake"
+  "${MINGW_PACKAGE_PREFIX}-ninja"
+)
+checkdepends=("${MINGW_PACKAGE_PREFIX}-gtest")
+source=("001-fix-nop.patch"
+        "002-test-depend.patch"
+        "${_realname}.zip::${url}/archive/refs/heads/main.zip")
+sha256sums=('ffcca5bc33f746badf5d53475a406bba95366ca9f2b25be9e0ce68efdc1443ff'
+            '377fbfccc117c99b317b113e45446d74caa2930f5484578e353f185efdfd5ab0'
+            '38682db69d89410ab8d06d142ebea99c9062979f4623c8ca963ac4b7cd059ca5')
+b2sums=('0443478e45684b6f0fe36030eeb4d427a5fcc5c243310dfcdb7997f5ba598ee57edb387a5969e92d9660752466bd61c20b46fcce5a4b9c4ae28149d990316daf'
+        '989e37edd2bb6489e7c42c6aa4b73ce075bb73e8637da1bb497c302ed2e365141f099e53b925eecbb034b7916a70b1151f1aa8b8b9e0d89304b3c24d8dea1e4c'
+        'd05fba956e8de03abe8b7aa9acc69913d499c864f1d849ecd39ff1413848cfbae286f4d5fc96412a70ea5238616d4a56b67fdb7d7ea5af325d93f47edc81823b')
+
+
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+prepare() {
+  mv "${srcdir}/${_realname}-main" "${srcdir}/${_realname}"
+  cd "${srcdir}/${_realname}"
+  apply_patch_with_msg \
+    "001-fix-nop.patch" \
+    "002-test-depend.patch"
+}
+
+_cmake_opts=(
+  -GNinja
+  -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}"
+
+  -DMARL_UBSAN=ON
+  -DMARL_INSTALL=ON
+  -DMARL_USE_PTHREAD_THREAD_LOCAL=ON
+
+  -S "${_realname}"
+)
+
+build() {
+  if check_option "debug" "n"; then
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    _cmake_opts+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  msg2 "Building static library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -B "build-${MSYSTEM}-static"
+
+  cmake --build "build-${MSYSTEM}-static"
+
+  msg2 "Building shared library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -DMARL_BUILD_SHARED=ON \
+      -B "build-${MSYSTEM}-shared"
+
+  cmake --build "build-${MSYSTEM}-shared"
+}
+
+check() {
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    cmake \
+      "${_cmake_opts[@]}" \
+      -DMARL_BUILD_TESTS=ON \
+      -B "build-${MSYSTEM}-static"
+  cmake --build "build-${MSYSTEM}-static"
+  "${srcdir}/build-${MSYSTEM}-static/marl-unittests.exe"
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}-static
+  mv "${pkgdir}${MINGW_PREFIX}/lib/cmake/marl" "${pkgdir}${MINGW_PREFIX}/lib/cmake/marl-static"
+  DESTDIR="${pkgdir}" cmake --install build-${MSYSTEM}-shared
+  mv "${pkgdir}${MINGW_PREFIX}/lib/cmake/marl" "${pkgdir}${MINGW_PREFIX}/lib/cmake/marl-shared"
+
+  install -vDm644 "${srcdir}/${_realname}/LICENSE" \
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+  install -vDm644 \
+    -t "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/" \
+    "${srcdir}/${_realname}/README.md"
+  mv "${srcdir}"/${_realname}/docs/* "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/"
+}

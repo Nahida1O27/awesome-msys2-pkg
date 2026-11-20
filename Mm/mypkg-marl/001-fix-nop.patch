@@ -1,0 +1,12 @@
+diff -Naur a/src/scheduler.cpp b/src/scheduler.cpp
+--- a/src/scheduler.cpp	2026-04-28 03:02:21.000000000 +0800
++++ b/src/scheduler.cpp	2026-11-19 20:51:29.720247400 +0800
+@@ -68,7 +68,7 @@
+ #endif
+ 
+ inline void nop() {
+-#if defined(_WIN32)
++#if defined(_MSC_VER)
+   __nop();
+ #else
+   __asm__ __volatile__("nop");

@@ -1,0 +1,53 @@
+--- a/CMakeLists.txt	2026-04-28 03:02:21.000000000 +0800
++++ b/CMakeLists.txt	2026-11-20 14:59:06.189836000 +0800
+@@ -79,13 +79,6 @@
+ ###########################################################
+ # Submodules
+ ###########################################################
+-if(MARL_BUILD_TESTS)
+-    if(NOT EXISTS ${MARL_GOOGLETEST_DIR}/.git)
+-        message(WARNING "third_party/googletest submodule missing.")
+-        message(WARNING "Run: `git submodule update --init` to build tests.")
+-        set(MARL_BUILD_TESTS OFF)
+-    endif()
+-endif(MARL_BUILD_TESTS)
+ 
+ if(MARL_BUILD_BENCHMARKS)
+     if(NOT EXISTS ${MARL_BENCHMARK_DIR}/.git)
+@@ -339,33 +332,20 @@
+         ${MARL_SRC_DIR}/thread_test.cpp
+         ${MARL_SRC_DIR}/ticket_test.cpp
+         ${MARL_SRC_DIR}/waitgroup_test.cpp
+-        ${MARL_GOOGLETEST_DIR}/googletest/src/gtest-all.cc
+-        ${MARL_GOOGLETEST_DIR}/googlemock/src/gmock-all.cc
+     )
+ 
+-    # Disable warnings for third party code
+-    set_property(SOURCE
+-        ${MARL_GOOGLETEST_DIR}/googletest/src/gtest-all.cc
+-        ${MARL_GOOGLETEST_DIR}/googlemock/src/gmock-all.cc
+-	APPEND PROPERTY COMPILE_OPTIONS -w)
+-
+-    set(MARL_TEST_INCLUDE_DIR
+-        ${MARL_GOOGLETEST_DIR}/googletest/include/
+-        ${MARL_GOOGLETEST_DIR}/googlemock/include/
+-        ${MARL_GOOGLETEST_DIR}/googletest/
+-        ${MARL_GOOGLETEST_DIR}/googlemock/
+-    )
++
++    find_package(GTest REQUIRED)
+ 
+     add_executable(marl-unittests ${MARL_TEST_LIST})
+ 
+     set_target_properties(marl-unittests PROPERTIES
+-        INCLUDE_DIRECTORIES "${MARL_TEST_INCLUDE_DIR}"
+         FOLDER "Tests"
+     )
+ 
+     marl_set_target_options(marl-unittests)
+ 
+-    target_link_libraries(marl-unittests PRIVATE marl)
++    target_link_libraries(marl-unittests PRIVATE marl GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+ endif(MARL_BUILD_TESTS)
+ 
+ # benchmarks
