@@ -1,0 +1,93 @@
+_realname=mla
+pkgbase=mypkg-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-mypkg-${_realname}"
+         "${MINGW_PACKAGE_PREFIX}-mypkg-python-${_realname}")
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="Multi Layer Archive – A pure Rust archive format with encryption, compression, digital signatures, and post-quantum cryptography"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64' 'clangarm64')
+url='https://anssi-fr.github.io/MLA/'
+msys2_documentation_url='https://docs.rs/mla'
+msys2_repository_url='https://github.com/ANSSI-FR/MLA'
+msys2_issue_tracker_url='https://github.com/ANSSI-FR/MLA/issues'
+msys2_changelog_url='https://github.com/ANSSI-FR/MLA/blob/main/CHANGELOG.md'
+license=('LGPL-3.0')
+makedepends=("${MINGW_PACKAGE_PREFIX}-cc"
+             "${MINGW_PACKAGE_PREFIX}-rust")
+source=("${msys2_repository_url}/archive/${_realname}-${pkgver}/${_realname}-${pkgver}.tar.gz")
+sha256sums=('acad1b544dc5acf98f0201991309830e0c642a98f35e77d3d2f6acb1f7ce3ef6')
+b2sums=('db234a1bff05e1a11145f72df5d33652423ed8a8b7e768303ae20bfa52d8b721f7e4438b5da37eaa48755b9d7adc45dfa43b9c75632b2785ec447cabd8ca4e27')
+options=('!strip')
+
+prepare() {
+  cd ${srcdir}
+  mv MLA-${_realname}-${pkgver} ${_realname}-${pkgver}
+  cd ${_realname}-${pkgver}
+  cargo fetch --locked --target "${RUST_CHOST}"
+
+  cd bindings/python
+  cargo fetch --locked --target "${RUST_CHOST}"
+}
+
+build() {
+  cd ${srcdir}/${_realname}-${pkgver}
+  cargo build --release --frozen -p mlar -p mla-bindings-c -p mla-fuzz-afl -p mlar-upgrader
+
+  cd bindings/python
+  python_version=$(python --version 2>&1 | sed -E 's/^Python ([0-9]+\.[0-9]+).*/\1/')
+  export RUSTFLAGS="-C link-arg=-L${MINGW_PREFIX}/lib -C link-arg=-lpython${python_version}"
+  maturin build --release
+}
+
+check() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+  cargo test --release --frozen -p mla@${pkgver} -p mlar -p mlar-upgrader --no-fail-fast || true
+
+  cd bindings/python
+  pytest || true
+}
+
+package_mla() {
+  depends=("${MINGW_PACKAGE_PREFIX}-crt") #for static link against libntdll.a
+  makedepends+=("${MINGW_PACKAGE_PREFIX}-cbindgen")
+
+  cd ${srcdir}/${_realname}-${pkgver}
+  install -vDm755 -t "${pkgdir}${MINGW_PREFIX}/bin/" \
+    target/release/*.exe
+
+  install -vDm755 -t "${pkgdir}${MINGW_PREFIX}/bin/" \
+    target/release/mla.dll
+  install -vDm755 -t "${pkgdir}${MINGW_PREFIX}/lib/" \
+    target/release/libmla.a target/release/libmla.dll.a
+  install -vDm644 -t "${pkgdir}${MINGW_PREFIX}/include/mla/" \
+    bindings/C/mla.h bindings/C/mla.hpp
+
+  install -vDm644 LICENSE.md -t "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/"
+  install -vDm644 README.md -t "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/"
+  cp -r doc/* "${pkgdir}${MINGW_PREFIX}/share/doc/${_realname}/"
+}
+
+package_python-mla() {
+  pkgdesc+=" (Python binding)"
+  depends+=("${MINGW_PACKAGE_PREFIX}-python")
+  makedepends+=("${MINGW_PACKAGE_PREFIX}-maturin"
+                "${MINGW_PACKAGE_PREFIX}-python-installer")
+  checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest")
+
+  cd "${srcdir}/${_realname}-${pkgver}/bindings/python"
+  MSYS2_ARG_CONV_EXCL="--prefix=" \
+    python -m installer --prefix=${MINGW_PREFIX} \
+      --destdir="${pkgdir}" target/wheels/*.whl
+}
+
+# template start; name=mingw-w64-splitpkg-wrappers; version=1.0;
+# vim: set ft=bash :
+
+# generate wrappers
+for _name in "${pkgname[@]}"; do
+  _short="package_${_name#${MINGW_PACKAGE_PREFIX}-mypkg-}"
+  _func="$(declare -f "${_short}")"
+  eval "${_func/#${_short}/package_${_name}}"
+done
+# template end;
